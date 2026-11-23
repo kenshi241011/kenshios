@@ -163,6 +163,25 @@ apt update
 apt install -y steam-installer lutris gamemode mangohud wine \
   mesa-vulkan-drivers mesa-vulkan-drivers:i386 || true
 
+# --- Rebranding del login GDM (logo KenshiOS en vez de Ubuntu) ---
+convert -size 360x90 xc:none -gravity center -fill '#b026ff' -pointsize 52 -annotate 0 'KenshiOS' /usr/share/backgrounds/kenshios-logo.png 2>/dev/null || true
+mkdir -p /etc/dconf/profile /etc/dconf/db/gdm.d
+printf 'user-db:user\nsystem-db:gdm\nfile-db:/usr/share/gdm/greeter-dconf-defaults\n' > /etc/dconf/profile/gdm
+printf "[org/gnome/login-screen]\nlogo='/usr/share/backgrounds/kenshios-logo.png'\n" > /etc/dconf/db/gdm.d/01-kenshios
+dconf update 2>/dev/null || true
+
+# --- Rebranding de las diapositivas del instalador (dicen "Ubuntu") ---
+if [ -d /usr/share/ubiquity-slideshow ]; then
+  find /usr/share/ubiquity-slideshow -name "*.html" -exec sed -i 's/Ubuntu/KenshiOS/g' {} + 2>/dev/null || true
+fi
+
+# --- Plasma como sesion por defecto (oculta las sesiones GNOME del login) ---
+mkdir -p /usr/share/xsessions-disabled
+for s in ubuntu ubuntu-xorg gnome gnome-xorg gnome-classic; do
+  mv "/usr/share/xsessions/$s.desktop" /usr/share/xsessions-disabled/ 2>/dev/null || true
+  mv "/usr/share/wayland-sessions/$s.desktop" /usr/share/xsessions-disabled/ 2>/dev/null || true
+done
+
 # --- Limpieza para que pese menos ---
 apt clean
 rm -rf /var/lib/apt/lists/* /usr/share/doc/* /tmp/* /var/tmp/* 2>/dev/null
