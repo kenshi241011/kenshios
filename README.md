@@ -190,24 +190,25 @@ En el menú de arranque elige **"Try or Install KenshiOS"**. Deberías ver tu pa
 
 - **Qué pasa:** la ISO arranca y muestra el fondo, pero la pantalla de login de KDE (**SDDM**) falla en bucle.
 - **Causa:** SDDM necesita aceleración gráfica (OpenGL) que una **VM sin GPU** no tiene, y además entra en conflicto con **GDM** (el gestor de login de GNOME, que viene instalado). El instalador de GNOME sí funciona porque GDM usa renderizado por software como respaldo.
-- 🟡 **Mejora parcial** (ayuda pero puede no bastar en una VM): forzar renderizado por software en SDDM:
+- ✅ **SOLUCIÓN CONFIRMADA: usa GDM, NO SDDM.** GDM (el gestor de login de Ubuntu) funciona perfecto en VMs y PCs. En el `kenshios-setup.sh` **NO instales sddm ni lo pongas como gestor**; instala KDE y deja GDM:
   ```bash
-  mkdir -p /etc/sddm.conf.d
-  cat > /etc/sddm.conf.d/10-vm.conf <<EOF
-  [General]
-  GreeterEnvironment=QT_QUICK_BACKEND=software,QSG_RENDER_LOOP=basic
-  EOF
+  apt install -y kde-plasma-desktop gdm3
+  apt purge -y sddm 2>/dev/null || true   # por si entró como dependencia
+  GDM_SVC=$(find /lib/systemd/system -name gdm3.service | head -1)
+  ln -sf "$GDM_SVC" /etc/systemd/system/display-manager.service
+  echo "/usr/sbin/gdm3" > /etc/X11/default-display-manager
   ```
-- ✅ **Solución robusta (recomendada):** **no uses SDDM; quédate con GDM** (el gestor de login de Ubuntu, que funciona perfecto en VMs y PCs). Solo instala KDE y deja que GDM ofrezca la sesión "Plasma". Es decir, en el script **omite** el bloque que fuerza SDDM:
-  ```bash
-  # NO hagas esto si quieres máxima compatibilidad:
-  #   ln -sf .../sddm.service /etc/systemd/system/display-manager.service
-  #   echo "/usr/sbin/sddm" > /etc/X11/default-display-manager
-  # En su lugar: deja GDM y elige "Plasma (X11)" en la pantalla de login.
-  ```
-  Con GDM, en la pantalla de inicio de sesión pulsas el engranaje ⚙️ y eliges **"Plasma"**. KDE arranca sin problemas.
+  En la pantalla de login, pulsa el engranaje ⚙️ (abajo a la derecha), elige **"Plasma (X11)"** y entra. GDM recuerda la sesión, así que las siguientes veces entra directo a KDE. ✔️ **Probado: KDE Plasma carga con el fondo, la barra tipo Windows y la ventana de bienvenida.**
 
-> 📌 **Lección:** mezclar dos gestores de login (GDM + SDDM) causa conflictos. Elige uno. GDM es el más compatible; SDDM es más "KDE puro" pero quisquilloso en VMs sin GPU.
+- 🔧 **Si YA instalaste KenshiOS con SDDM** (se cuelga al arrancar): entra a una consola de texto con **Ctrl+Alt+F2**, inicia sesión con tu usuario, y ejecuta:
+  ```bash
+  sudo apt purge sddm                       # quita SDDM
+  sudo ln -sf /lib/systemd/system/gdm3.service /etc/systemd/system/display-manager.service
+  sudo reboot
+  ```
+  Al reiniciar sale GDM → elige **Plasma (X11)** → ¡KDE!
+
+> 📌 **Lección:** mezclar dos gestores de login (GDM + SDDM) causa conflictos, y SDDM es quisquilloso en VMs sin GPU. Elige **uno** — GDM es el más compatible.
 
 ### ⚠️ Avisos que puedes IGNORAR (no son errores)
 

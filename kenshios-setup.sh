@@ -15,11 +15,16 @@ apt update
 apt install -y nmap net-tools dnsutils whois curl wget git python3-pip \
   netcat-openbsd hydra john nikto imagemagick libnotify-bin squashfs-tools || true
 
-# --- KDE Plasma + login SDDM ---
-apt install -y kde-plasma-desktop sddm || true
-SDDM_SVC=$(find /lib/systemd/system /usr/lib/systemd/system -name sddm.service 2>/dev/null | head -1)
-[ -n "$SDDM_SVC" ] && ln -sf "$SDDM_SVC" /etc/systemd/system/display-manager.service
-echo "/usr/sbin/sddm" > /etc/X11/default-display-manager
+# --- KDE Plasma (login con GDM; NO sddm: sddm falla en VMs sin GPU) ---
+apt install -y kde-plasma-desktop || true
+apt install -y gdm3 || true
+# Nos aseguramos de NO usar sddm: lo quitamos si se coló como dependencia
+apt purge -y sddm 2>/dev/null || true
+# GDM como gestor de inicio de sesion (fiable en VMs y PCs)
+GDM_SVC=$(find /lib/systemd/system /usr/lib/systemd/system -name gdm3.service 2>/dev/null | head -1)
+[ -n "$GDM_SVC" ] && ln -sf "$GDM_SVC" /etc/systemd/system/display-manager.service
+echo "/usr/sbin/gdm3" > /etc/X11/default-display-manager
+# Al iniciar sesion, el usuario elige "Plasma (X11)" (GDM lo recuerda despues)
 
 # --- Fondo de pantalla ---
 if [ -f /root/kenshios.png ]; then
@@ -159,11 +164,6 @@ apt install -y steam-installer lutris gamemode mangohud wine \
   mesa-vulkan-drivers mesa-vulkan-drivers:i386 || true
 
 # --- Limpieza para que pese menos ---
-mkdir -p /etc/sddm.conf.d
-printf "[General]
-GreeterEnvironment=QT_QUICK_BACKEND=software,QSG_RENDER_LOOP=basic
-" > /etc/sddm.conf.d/10-vm.conf
-
 apt clean
 rm -rf /var/lib/apt/lists/* /usr/share/doc/* /tmp/* /var/tmp/* 2>/dev/null
 
